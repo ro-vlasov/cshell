@@ -1,3 +1,4 @@
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -5,9 +6,36 @@
 #include <sys/wait.h>
 #include <sys/types.h>
 #include <errno.h>
-
-
 #define NARGS 5
+
+
+// Embedded functions
+int cshell_exit(char**);
+
+// Context
+char *embedded_str[] = {
+	"exit"
+};
+
+
+// Function array
+int (*embedded_func[])(char **) = {
+	&cshell_exit
+};
+
+#define CSHELL_NUM_EMBEDDED 	sizeof(embedded_func)/sizeof(char*)
+#define CSHELL_EXEC_CMD		-1
+
+
+
+
+int cshell_exit(char **args)
+{
+	return 0;
+}
+
+
+
 
 
 char **cshell_tokenize_line(char *input_str)
@@ -60,7 +88,18 @@ char * cshell_read_line()
 }
 
 
-void cshell_exec_command(char **cmd)
+int cshell_launch(char **cmd)
+{
+	for (int i = 0; i < CSHELL_NUM_EMBEDDED; i++)
+	{
+		if (strcmp(cmd[0], embedded_str[i]) == 0)
+			return (*embedded_func[i])(cmd);
+	}
+	return cshell_exec_command(cmd);
+}
+
+
+int cshell_exec_command(char **cmd)
 {
 	pid_t _pid = fork();
 	int* status;
@@ -77,6 +116,7 @@ void cshell_exec_command(char **cmd)
 		if (_pid > 0)
 		{
 			wait(status);
+			return CSHELL_EXEC_CMD;
 		}
 		else
 		{
@@ -88,19 +128,17 @@ void cshell_exec_command(char **cmd)
 
 int main()
 {
-	char *a = cshell_read_line();
-	char **b = cshell_tokenize_line(a);
-	int _pidfork = fork();
-	int *status;
-	if (_pidfork == 0)
+	char *line;
+	char **tokenizingline;
+	
+	while (1)
 	{
-		cshell_exec_command(b);
-		exit(0);
+		line = cshell_read_line();
+		tokenizingline = cshell_tokenize_line(line);
+		if (cshell_launch(tokenizingline) == 0)
+		{
+			return 0;
+		}
 	}
-	else
-	{
-		wait(status);
-	}
-	//cshell_exec_command(b);	
 }
 	
