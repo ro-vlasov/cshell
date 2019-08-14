@@ -1,39 +1,9 @@
+#include "include/cshell.h"
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include <sys/wait.h>
-#include <sys/types.h>
-#include <errno.h>
-#define NARGS 5
-
-
-// Embedded functions
-int cshell_exit(char**);
-int cshell_cd(char**);
-// Context
-char *embedded_str[] = {
-	"exit",
-	"cd"
-};
-
-
-// Function array
-int (*embedded_func[])(char **) = {
-	&cshell_exit,
-	&cshell_cd
-};
-
-#define CSHELL_NUM_EMBEDDED 	sizeof(embedded_func)/sizeof(char*)
-#define CSHELL_EXEC_CMD		-1
-
-#define CSHELL_CD_ERROR		-10;
-#define CSHELL_CD_EXECUTE	10;
 
 int cshell_exit(char **args)
 {
-	return 0;
+	return CSHELL_EXIT;
 }
 
 int cshell_cd(char **args)
@@ -66,6 +36,61 @@ int cshell_cd(char **args)
 	}
 }
 
+char **cshell_tokenize_line(char *input_str);
+
+
+int schell_number_of_arguments(char **cmd)
+{
+	int i = 0;
+	while (cmd[i] != NULL)
+	{
+		i++;
+	}
+	return i;
+}
+
+int cshell_pipe_exec_cmd(char **cmd) 
+{
+  	int fd[2];
+  	int fd_in = 0;
+	int i = 0;
+	int cnt_pipes = schell_number_of_arguments(cmd);
+
+	pid_t pid;
+	
+	while (i < cnt_pipes)
+	{
+		pipe(fd);
+		pid = fork();
+		if (pid == -1)
+        	{
+          		exit(EXIT_FAILURE);
+        	}
+      		else
+		{
+			if (pid == 0)
+        		{
+          			dup2(fd_in, 0);	//change the input according to the old one 
+          			if ((cmd[i+1]) != NULL)
+				{
+            				dup2(fd[1], 1);
+				}
+				close(fd[0]);
+				char**a = cshell_tokenize_line(cmd[i]);
+          			execvp(a[0], a);
+				exit(EXIT_FAILURE);
+        		}
+      			else
+        		{
+       	 	 		wait(NULL);
+          			close(fd[1]);
+          			fd_in = fd[0]; //save the input for the next command
+          			i++;
+      			}
+		}	
+	}
+  	return CSHELL_EXIT_PIPE_SUCCESS;
+}
 
 char **cshell_tokenize_line(char *input_str)
 {
@@ -104,7 +129,6 @@ char **cshell_tokenize_line(char *input_str)
 	cmd[i] = NULL;
 	return cmd;
 }
-
 
 char * cshell_read_line()
 {
@@ -157,21 +181,78 @@ int cshell_exec_command(char **cmd)
 	}
 }
 
+
+char cshell_detect_char_in_line(char *line, char ch)
+{
+	int i = 0;
+	while (line[i] != '\0')
+	{
+		if (line[i] == ch)
+			return 1;
+		i++;
+	}
+	return 0;
+}
+
+int cshell_pipe_detected(char *line, char **cmd_exec)
+{
+	if (!cshell_detect_char_in_line(line, '|'))
+	{
+		return 0;
+	}
+
+	int pipe_cnt = 0;
+	cmd_exec[pipe_cnt++] = strtok(line, "|");
+	while ((cmd_exec[pipe_cnt] = strtok(NULL, "|")) != NULL)
+	{
+		pipe_cnt++;
+	}
+	cmd_exec[pipe_cnt] = NULL;
+	return pipe_cnt;
+}
+
+
 int main()
 {
-	char *line;
-	char **tokenizingline;
+	char *line = NULL;
+	char **tokenizingline = NULL;
+	char **cmd_exec = (char**) malloc((long)CSHELL_MAX_PIPE_NUM * sizeof(char*));
+	
+	int status;
 	
 	while (1)
 	{
 		line = cshell_read_line();
-		tokenizingline = cshell_tokenize_line(line);
-		if (cshell_launch(tokenizingline) == 0)
+		int pcnt = cshell_pipe_detected(line, cmd_exec);
+		if (pcnt)
 		{
-			free(tokenizingline);
-			return 0;
+			pid_t pid = fork();
+			if (pid == 0)
+			{
+ 				if (cshell_pipe_exec_cmd(cmd_exec) > 0)
+				{
+					return CSHELL_EXIT_PIPE_SUCCESS; 
+				}
+			}
+			else
+			{
+				wait(&status);
+			}
+		}
+		else
+		{
+			tokenizingline = cshell_tokenize_line(line);
+			if (cshell_launch(tokenizingline) == 0)
+			{
+				if (tokenizingline)
+					free(tokenizingline);
+				if (cmd_exec)
+					free(cmd_exec);
+				return 0;
+			}
 		}
 		free(tokenizingline);
+		tokenizingline = NULL;
 	}
 }
 	
