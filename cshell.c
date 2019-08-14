@@ -11,31 +11,60 @@
 
 // Embedded functions
 int cshell_exit(char**);
-
+int cshell_cd(char**);
 // Context
 char *embedded_str[] = {
-	"exit"
+	"exit",
+	"cd"
 };
 
 
 // Function array
 int (*embedded_func[])(char **) = {
-	&cshell_exit
+	&cshell_exit,
+	&cshell_cd
 };
 
 #define CSHELL_NUM_EMBEDDED 	sizeof(embedded_func)/sizeof(char*)
 #define CSHELL_EXEC_CMD		-1
 
-
-
+#define CSHELL_CD_ERROR		-10;
+#define CSHELL_CD_EXECUTE	10;
 
 int cshell_exit(char **args)
 {
 	return 0;
 }
 
-
-
+int cshell_cd(char **args)
+{
+	if (args[1] == NULL)
+	{
+		if (chdir("/home/qfour") == -1)
+		{
+			printf("cd : can't change directory\n");
+			return CSHELL_CD_ERROR;
+		}
+		return CSHELL_CD_EXECUTE;
+	}
+	else
+	{
+		if (args[2] == NULL)
+		{
+			if (chdir(args[1]) == -1)
+			{
+				printf("cd : can't change directory\n");
+				return CSHELL_CD_ERROR;
+			}
+			return CSHELL_CD_EXECUTE;
+		}
+		else
+		{
+			printf("cd: bad arguments\n");
+			return CSHELL_CD_ERROR;
+		}
+	}
+}
 
 
 char **cshell_tokenize_line(char *input_str)
@@ -67,7 +96,7 @@ char **cshell_tokenize_line(char *input_str)
 		}
 		else
 		{
-			printf("\n a lot of args");
+			printf("cmd: a lot of args\n");
 			return NULL;
 		}
 	}
@@ -93,7 +122,9 @@ int cshell_launch(char **cmd)
 	for (int i = 0; i < CSHELL_NUM_EMBEDDED; i++)
 	{
 		if (strcmp(cmd[0], embedded_str[i]) == 0)
+		{
 			return (*embedded_func[i])(cmd);
+		}
 	}
 	return cshell_exec_command(cmd);
 }
@@ -107,7 +138,7 @@ int cshell_exec_command(char **cmd)
 	{
 		if (execvp(cmd[0], cmd) == -1)
 		{
-			printf("%s:%d", "errno:", errno);
+			printf("%s:%d\n", "execution error: errno = ", errno);
 		}
 		exit (EXIT_FAILURE);
 	}
@@ -120,7 +151,7 @@ int cshell_exec_command(char **cmd)
 		}
 		else
 		{
-			printf("Fork error");
+			printf("Fork error\n");
 			exit (EXIT_FAILURE);
 		}
 	}
