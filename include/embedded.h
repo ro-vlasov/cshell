@@ -2,30 +2,22 @@
 #define EMBEDDED_H
 
 
-
-/* 	include/embedded.h 	*/
-
-
-
-typedef int (*embedded)(char**);
-
 // Embedded functions
-
-embedded cshell_exit;
-
-
+int cshell_exit(char**);
+int cshell_cd(char**);
 // Context
 char *embedded_str[] = {
-	"exit"
+	"exit",
+	"cd"
 };
 
 
 // Function array
-embedded embedded_func[] = {
-	&cshell_exit
+int (*embedded_func[])(char **) = {
+	&cshell_exit,
+	&cshell_cd
 };
 
-#define CSHELL_NUM_EMBEDDED 	sizeof(embedded_func)/sizeof(char*)
-
+#define CSHELL_NUM_EMBEDDED	 	sizeof(embedded_func)/sizeof(char*)
 
 #endif

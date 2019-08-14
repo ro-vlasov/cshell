@@ -1,4 +1,17 @@
 #include "include/cshell.h"
+#include "include/embedded.h"
+
+#define BUFSIZE 	256
+char user[BUFSIZE];
+char host[BUFSIZE];
+char homedir[BUFSIZE];
+
+
+void cshell_invoke()
+{
+	getcwd(homedir, BUFSIZE);
+	printf("%s@%s:%s", user, host, homedir);
+}
 
 
 int cshell_exit(char **args)
@@ -132,7 +145,11 @@ char **cshell_tokenize_line(char *input_str)
 
 char * cshell_read_line()
 {
-	printf("%s", "cshell$> ");
+	/* user, host, path */
+	cshell_invoke();
+
+	/* */
+	printf("%s", " cshell$> ");
 	char *line = NULL;
 	ssize_t bufsize = 0;
 	getline(&line, &bufsize, stdin);
@@ -214,6 +231,12 @@ int cshell_pipe_detected(char *line, char **cmd_exec)
 
 int main()
 {
+	
+	/* initial environment*/
+	getlogin_r(user, BUFSIZE);
+	gethostname(host, BUFSIZE);
+	/* */
+
 	char *line = NULL;
 	char **tokenizingline = NULL;
 	char **cmd_exec = (char**) malloc((long)CSHELL_MAX_PIPE_NUM * sizeof(char*));
