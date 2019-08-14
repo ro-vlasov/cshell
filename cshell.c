@@ -168,8 +168,10 @@ int main()
 		tokenizingline = cshell_tokenize_line(line);
 		if (cshell_launch(tokenizingline) == 0)
 		{
+			free(tokenizingline);
 			return 0;
 		}
+		free(tokenizingline);
 	}
 }
 	
