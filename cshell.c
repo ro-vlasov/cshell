@@ -1,6 +1,7 @@
 #include "include/cshell.h"
 #include "include/embedded.h"
 #include "include/signals.h"
+#include "fcntl.h"
 
 #define BUFSIZE 	256
 #define HISTORY_COUNT	100
@@ -29,6 +30,17 @@ int schell_number_of_arguments(char **cmd)
 	return i;
 }
 
+char cshell_detect_char_in_line(char *line, char ch)
+{
+	int i = 0;
+	while (line[i] != '\0')
+	{
+		if (line[i] == ch)
+			return 1;
+		i++;
+	}
+	return 0;
+}
 
 void cshell_add_in_history(char *line)
 {
@@ -39,7 +51,6 @@ void cshell_add_in_history(char *line)
 	history[(_history_current % HISTORY_COUNT)] = (char*)malloc(sizeof(char*) * strlen(line));
 	strcpy(history[(_history_current % HISTORY_COUNT)], line);
 	_history_current++;
-
 }
 
 void cshell_invoke()
@@ -151,6 +162,47 @@ int cshell_freehistory(char **args)
 /* 	Parsers + performers 	*/
 char **cshell_tokenize_line(char *input_str);
 
+
+int cshell_redirection_in_exec(char* line)
+{
+	char*  sline = strtok(line, ">");
+	char*  file = strtok(NULL, "\n");
+	file = strtok(file, "\n ");
+
+	char** cmd = cshell_tokenize_line(sline);
+
+	int oldstdout = dup(STDOUT); 	// duplicate old descriptor
+	int out = creat(file, 0644); 	// create a new file
+	dup2(out, STDOUT);	 	// redirection
+	close(out);			// close file
+	
+	int res = cshell_launch(cmd);
+
+	dup2(oldstdout, STDOUT);	// recovery stream
+	close(oldstdout);
+
+	if (res == CSHELL_EXEC_CMD || res == CSHELL_HISTORY_EXECUTE || res == CSHELL_FREEHISTORY_EXECUTE)
+	{
+		return CSHELL_REDIRECTED_EXEC_CMD;
+	}
+	else
+	{
+		return CSHELL_REDIRECTED_FAIL_EXEC_CMD;
+	}
+
+}
+
+
+int cshell_redirection_detected(char* line)
+{
+	if (!cshell_detect_char_in_line(line, '>'))
+	{
+		return 0;
+	}
+	return 1;
+}
+
+
 int cshell_pipe_exec_cmd(char **cmd) 
 {
   	int fd[2];
@@ -175,11 +227,19 @@ int cshell_pipe_exec_cmd(char **cmd)
           			dup2(fd_in, 0);	//change the input according to the old one 
           			if ((cmd[i+1]) != NULL)
 				{
-            				dup2(fd[1], 1);
+            				dup2(fd[STDOUT], STDOUT);
 				}
 				close(fd[0]);
+
+				if (cshell_redirection_detected(cmd[i]))
+				{
+					if (cshell_redirection_in_exec(cmd[i]) == CSHELL_REDIRECTED_EXEC_CMD)
+						exit(EXIT_SUCCESS);
+					exit (EXIT_FAILURE);
+				}
+
 				char** exec_cmd = cshell_tokenize_line(cmd[i]);
-				
+
 				if ( cshell_launch(exec_cmd) == CSHELL_EXEC_CMD)
 					exit(EXIT_SUCCESS);
 
@@ -188,7 +248,7 @@ int cshell_pipe_exec_cmd(char **cmd)
       			else
         		{
        	 	 		wait(NULL);
-          			close(fd[1]);
+          			close(fd[STDOUT]);
           			fd_in = fd[0]; //save the input for the next command
           			i++;
       			}
@@ -294,25 +354,13 @@ int cshell_exec_command(char **cmd)
 	}
 }
 
-
-char cshell_detect_char_in_line(char *line, char ch)
-{
-	int i = 0;
-	while (line[i] != '\0')
-	{
-		if (line[i] == ch)
-			return 1;
-		i++;
-	}
-	return 0;
-}
-
 int cshell_pipe_detected(char *line, char **cmd_exec)
 {
 	if (!cshell_detect_char_in_line(line, '|'))
 	{
 		return 0;
 	}
+
 
 	int pipe_cnt = 0;
 	cmd_exec[pipe_cnt++] = strtok(line, "|");
@@ -323,7 +371,6 @@ int cshell_pipe_detected(char *line, char **cmd_exec)
 	cmd_exec[pipe_cnt] = NULL;
 	return pipe_cnt;
 }
-
 
 int main()
 {
@@ -343,6 +390,8 @@ int main()
 	while (1)
 	{
 		line = cshell_read_line();
+
+		/* */
 		int pcnt = cshell_pipe_detected(line, cmd_exec);
 		if (pcnt)
 		{
@@ -361,6 +410,11 @@ int main()
 		}
 		else
 		{
+			if (cshell_redirection_detected(line))
+			{
+				cshell_redirection_in_exec(line);
+				continue;
+			}
 			tokenizingline = cshell_tokenize_line(line);
 			if (cshell_launch(tokenizingline) == 0)
 			{
