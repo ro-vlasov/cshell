@@ -26,13 +26,7 @@
 #define CSHELL_EXIT			0
 #define CSHELL_CD_EXECUTE		1
 #define CSHELL_HISTORY_EXECUTE		2
-
-
-
-
-
-
-
+#define CSHELL_FREEHISTORY_EXECUTE	3
 
 
 

@@ -3,7 +3,7 @@
 #include "include/signals.h"
 
 #define BUFSIZE 	256
-#define HISTORY_COUNT	5
+#define HISTORY_COUNT	1000
 
 
 
@@ -32,14 +32,14 @@ int schell_number_of_arguments(char **cmd)
 
 void cshell_add_in_history(char *line)
 {
+	if ( history[_history_current] )
+	{
+		free(history[_history_current]);
+	}
 	history[_history_current] = (char*)malloc(sizeof(char*) * strlen(line));
 	strcpy(history[_history_current++], line);
 	_history_current = _history_current % HISTORY_COUNT;
 }
-
-
-
-/* 	Performers	*/
 
 void cshell_invoke()
 {
@@ -47,6 +47,8 @@ void cshell_invoke()
 	printf("%s@%s:%s", user, host, homedir);
 }
 
+
+/* Build-in functions */
 
 int cshell_exit(char **args)
 {
@@ -91,7 +93,8 @@ int cshell_history(char **args)
 	{
 		if (history[i])
 		{
-			printf("%4d	%s\n", hist_num, history[i]);
+			fprintf(stdout, history[i]);
+		//	printf("%4d	%s\n", hist_num, history[i]);
 			hist_num++;
 		}
 		i = (i+1) % HISTORY_COUNT;
@@ -100,6 +103,22 @@ int cshell_history(char **args)
 }
 
 
+int cshell_freehistory(char **args)
+{
+	for (int i = 0; i < HISTORY_COUNT; i++)
+	{
+		if (history[i])
+		{
+			free(history[i]);
+			history[i] = NULL;
+		}
+	}
+	return CSHELL_FREEHISTORY_EXECUTE;
+}
+
+
+
+/* 	Parsers + performers 	*/
 char **cshell_tokenize_line(char *input_str);
 
 int cshell_pipe_exec_cmd(char **cmd) 
