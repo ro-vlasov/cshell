@@ -93,11 +93,10 @@ int cshell_history(char **args)
 	{
 		if (history[i])
 		{
-			fprintf(stdout, history[i]);
-		//	printf("%4d	%s\n", hist_num, history[i]);
+			printf("%4d	%s\n", hist_num, history[i]);
 			hist_num++;
 		}
-		i = (i+1) % HISTORY_COUNT;
+		i = ( i+1 ) % HISTORY_COUNT;
 	} while (i != _history_current);
 	return CSHELL_HISTORY_EXECUTE;
 }
@@ -148,9 +147,12 @@ int cshell_pipe_exec_cmd(char **cmd)
             				dup2(fd[1], 1);
 				}
 				close(fd[0]);
-				char**a = cshell_tokenize_line(cmd[i]);
-          			execvp(a[0], a);
-				exit(EXIT_FAILURE);
+				char** exec_cmd = cshell_tokenize_line(cmd[i]);
+				
+				if ( cshell_launch(exec_cmd) == CSHELL_EXEC_CMD)
+					exit(EXIT_SUCCESS);
+
+				exit (EXIT_FAILURE);
         		}
       			else
         		{
