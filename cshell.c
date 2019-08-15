@@ -160,6 +160,28 @@ int cshell_freehistory(char **args)
 
 
 /* 	Parsers + performers 	*/
+
+
+char * cshell_read_line()
+{
+	/* user, host, path */
+	cshell_invoke();
+
+	/* */
+	printf("%s", " cshell$> ");
+	char *line = NULL;
+	ssize_t bufsize = 0;
+	getline(&line, &bufsize, stdin);
+	line[strlen(line) - 1] = '\0';
+
+	/* adding the command in the history */
+	cshell_add_in_history(line);
+
+	return line;
+}
+
+
+
 char **cshell_tokenize_line(char *input_str);
 
 
@@ -192,10 +214,48 @@ int cshell_redirection_in_exec(char* line)
 
 }
 
+int cshell_redirection_out_exec(char* line)
+{
+	char*  sline = strtok(line, "<");
+	char*  file = strtok(NULL, "\n");
+	file = strtok(file, "\n ");
 
-int cshell_redirection_detected(char* line)
+	char** cmd = cshell_tokenize_line(sline);
+
+	int oldstdout = dup(0); 		// duplicate old descriptor
+	int out = open(file, O_RDONLY, 0); 	// create a new file
+	dup2(out, 0);		 		// redirection
+						// close file
+	int res = cshell_launch(cmd);
+
+	dup2(oldstdout, 0);	// recovery stream
+	close(oldstdout);
+
+	if (res == CSHELL_EXEC_CMD || res == CSHELL_HISTORY_EXECUTE || res == CSHELL_FREEHISTORY_EXECUTE)
+	{
+		return CSHELL_REDIRECTED_EXEC_CMD;
+	}
+	else
+	{
+		return CSHELL_REDIRECTED_FAIL_EXEC_CMD;
+	}
+}
+
+
+
+
+int cshell_redirection_in_detected(char* line)
 {
 	if (!cshell_detect_char_in_line(line, '>'))
+	{
+		return 0;
+	}
+	return 1;
+}
+
+int cshell_redirection_out_detected(char* line)
+{
+	if (!cshell_detect_char_in_line(line, '<'))
 	{
 		return 0;
 	}
@@ -231,12 +291,20 @@ int cshell_pipe_exec_cmd(char **cmd)
 				}
 				close(fd[0]);
 
-				if (cshell_redirection_detected(cmd[i]))
+				if (cshell_redirection_in_detected(cmd[i]))
 				{
 					if (cshell_redirection_in_exec(cmd[i]) == CSHELL_REDIRECTED_EXEC_CMD)
 						exit(EXIT_SUCCESS);
 					exit (EXIT_FAILURE);
 				}
+				
+				if (cshell_redirection_out_detected(cmd[i]))
+				{
+					if (cshell_redirection_out_exec(cmd[i]) == CSHELL_REDIRECTED_EXEC_CMD)
+						exit(EXIT_SUCCESS);
+					exit (EXIT_FAILURE);
+				}
+
 
 				char** exec_cmd = cshell_tokenize_line(cmd[i]);
 
@@ -294,25 +362,6 @@ char **cshell_tokenize_line(char *input_str)
 	cmd[i] = NULL;
 	return cmd;
 }
-
-char * cshell_read_line()
-{
-	/* user, host, path */
-	cshell_invoke();
-
-	/* */
-	printf("%s", " cshell$> ");
-	char *line = NULL;
-	ssize_t bufsize = 0;
-	getline(&line, &bufsize, stdin);
-	line[strlen(line) - 1] = '\0';
-
-	/* adding the command in the history */
-	cshell_add_in_history(line);
-
-	return line;
-}
-
 
 int cshell_launch(char **cmd)
 {
@@ -410,9 +459,14 @@ int main()
 		}
 		else
 		{
-			if (cshell_redirection_detected(line))
+			if (cshell_redirection_in_detected(line))
 			{
 				cshell_redirection_in_exec(line);
+				continue;
+			}
+			if (cshell_redirection_out_detected(line))
+			{
+				cshell_redirection_out_exec(line);
 				continue;
 			}
 			tokenizingline = cshell_tokenize_line(line);
