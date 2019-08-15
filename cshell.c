@@ -3,10 +3,43 @@
 #include "include/signals.h"
 
 #define BUFSIZE 	256
+#define HISTORY_COUNT	5
+
+
+
+/* global variables/arrays */
 char user[BUFSIZE];
 char host[BUFSIZE];
 char homedir[BUFSIZE];
 
+char* history[HISTORY_COUNT];
+int _history_current;
+
+
+
+/*	Small functions 	*/
+
+int schell_number_of_arguments(char **cmd)
+{
+	int i = 0;
+	while (cmd[i] != NULL)
+	{
+		i++;
+	}
+	return i;
+}
+
+
+void cshell_add_in_history(char *line)
+{
+	history[_history_current] = (char*)malloc(sizeof(char*) * strlen(line));
+	strcpy(history[_history_current++], line);
+	_history_current = _history_current % HISTORY_COUNT;
+}
+
+
+
+/* 	Performers	*/
 
 void cshell_invoke()
 {
@@ -50,18 +83,24 @@ int cshell_cd(char **args)
 	}
 }
 
-char **cshell_tokenize_line(char *input_str);
-
-
-int schell_number_of_arguments(char **cmd)
+int cshell_history(char **args)
 {
-	int i = 0;
-	while (cmd[i] != NULL)
+	int i = _history_current;
+	int hist_num = 1;
+	do 
 	{
-		i++;
-	}
-	return i;
+		if (history[i])
+		{
+			printf("%4d	%s\n", hist_num, history[i]);
+			hist_num++;
+		}
+		i = (i+1) % HISTORY_COUNT;
+	} while (i != _history_current);
+	return CSHELL_HISTORY_EXECUTE;
 }
+
+
+char **cshell_tokenize_line(char *input_str);
 
 int cshell_pipe_exec_cmd(char **cmd) 
 {
@@ -155,6 +194,10 @@ char * cshell_read_line()
 	ssize_t bufsize = 0;
 	getline(&line, &bufsize, stdin);
 	line[strlen(line) - 1] = '\0';
+
+	/* adding the command in the history */
+	cshell_add_in_history(line);
+
 	return line;
 }
 
