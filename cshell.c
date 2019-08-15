@@ -3,7 +3,7 @@
 #include "include/signals.h"
 
 #define BUFSIZE 	256
-#define HISTORY_COUNT	10
+#define HISTORY_COUNT	100
 
 
 
@@ -13,7 +13,7 @@ char host[BUFSIZE];
 char homedir[BUFSIZE];
 
 char* history[HISTORY_COUNT];
-int _history_current;
+int _history_current = 0;
 
 
 
@@ -142,6 +142,7 @@ int cshell_freehistory(char **args)
 			history[i] = NULL;
 		}
 	}
+	_history_current = 0;
 	return CSHELL_FREEHISTORY_EXECUTE;
 }
 
