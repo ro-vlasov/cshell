@@ -1,5 +1,6 @@
 #include "include/cshell.h"
 #include "include/embedded.h"
+#include "include/signals.h"
 
 #define BUFSIZE 	256
 char user[BUFSIZE];
@@ -236,6 +237,7 @@ int main()
 	getlogin_r(user, BUFSIZE);
 	gethostname(host, BUFSIZE);
 	/* */
+	signal(SIGINT, sigint_handler);
 
 	char *line = NULL;
 	char **tokenizingline = NULL;

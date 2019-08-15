@@ -1,10 +1,13 @@
-#include "signal.h"
+#include "include/signals.h"
+#include "include/cshell.h"
 #include <stdio.h>
 
-typedef void (*sighandler_t)(int);
-
-void handle_signal(int signo)
+void sigint_handler(int sig)
 {
-	fflush(stdout);
-}
+	printf("\nPlease write \"exit\" to exit\n");
+	cshell_invoke();
+	printf("%s", " cshell$> ");
 
+	fflush(stdout);
+	return;
+}
