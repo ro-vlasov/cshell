@@ -3,7 +3,7 @@
 #include "include/signals.h"
 
 #define BUFSIZE 	256
-#define HISTORY_COUNT	1000
+#define HISTORY_COUNT	10
 
 
 
@@ -32,13 +32,14 @@ int schell_number_of_arguments(char **cmd)
 
 void cshell_add_in_history(char *line)
 {
-	if ( history[_history_current] )
+	if ( history[_history_current % HISTORY_COUNT] )
 	{
-		free(history[_history_current]);
+		free(history[_history_current % HISTORY_COUNT]);
 	}
-	history[_history_current] = (char*)malloc(sizeof(char*) * strlen(line));
-	strcpy(history[_history_current++], line);
-	_history_current = _history_current % HISTORY_COUNT;
+	history[(_history_current % HISTORY_COUNT)] = (char*)malloc(sizeof(char*) * strlen(line));
+	strcpy(history[(_history_current % HISTORY_COUNT)], line);
+	_history_current++;
+
 }
 
 void cshell_invoke()
@@ -87,17 +88,46 @@ int cshell_cd(char **args)
 
 int cshell_history(char **args)
 {
-	int i = _history_current;
-	int hist_num = 1;
+	int border;
+	if (args[1] != NULL)
+	{
+		border = atoi(args[1]);
+		if (border > HISTORY_COUNT || border <= 0)
+			border = HISTORY_COUNT;
+	}
+	else border = HISTORY_COUNT;
+
+
+	int cnt = 0;
+	int i = (_history_current + (HISTORY_COUNT - border)) % HISTORY_COUNT;
+
+
+	int hist_num;	// number in history
+	if (_history_current <= HISTORY_COUNT)
+	{	
+		if (_history_current <= border)
+		{
+			hist_num = 1;
+		}
+		else
+		{
+			hist_num = _history_current - border + 1;
+		}
+	}
+	else
+	{
+		hist_num = _history_current - HISTORY_COUNT + 1;
+	}	
 	do 
 	{
+		cnt++;
 		if (history[i])
 		{
 			printf("%4d	%s\n", hist_num, history[i]);
 			hist_num++;
 		}
 		i = ( i+1 ) % HISTORY_COUNT;
-	} while (i != _history_current);
+	} while ( i != _history_current % HISTORY_COUNT );
 	return CSHELL_HISTORY_EXECUTE;
 }
 
