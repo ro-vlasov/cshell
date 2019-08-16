@@ -2,19 +2,25 @@
 #include "include/embedded.h"
 #include "include/signals.h"
 #include "fcntl.h"
-
+#include "stack_array.c"
 #define BUFSIZE 	256
 #define HISTORY_COUNT	100
-
+#define STACK_COUNT	100
 
 
 /* global variables/arrays */
 char user[BUFSIZE];
 char host[BUFSIZE];
 char homedir[BUFSIZE];
+extern int position; // in stack_array.c
+
+
+
 
 char* history[HISTORY_COUNT];
+char* stackdir[STACK_COUNT];
 int _history_current = 0;
+
 
 
 
@@ -76,6 +82,7 @@ int cshell_cd(char **args)
 			printf("cd : can't change directory\n");
 			return CSHELL_CD_ERROR;
 		}
+		_stack_change_top(stackdir, "/home/qfour");
 		return CSHELL_CD_EXECUTE;
 	}
 	else
@@ -87,6 +94,7 @@ int cshell_cd(char **args)
 				printf("cd : can't change directory\n");
 				return CSHELL_CD_ERROR;
 			}
+			_stack_change_top(stackdir, getcwd(NULL,0));
 			return CSHELL_CD_EXECUTE;
 		}
 		else
@@ -157,6 +165,52 @@ int cshell_freehistory(char **args)
 	return CSHELL_FREEHISTORY_EXECUTE;
 }
 
+
+int cshell_dirs(char **args)
+{
+	for(int i = position - 1; i >= 0; i--)
+	{
+		printf("%s   ", stackdir[i]);
+	}
+	printf("\n");
+	return CSHELL_DIRS;
+}	
+
+
+int cshell_pushd(char **args)
+{
+	if (args[2] == NULL)
+	{
+		if ( chdir(args[1]) == -1 )
+		{
+			printf("Can't change directory, please enter : pushd (path_directory)\n");
+			return CSHELL_PUSHD_ERROR;
+		}
+		else
+		{
+			_stack_push(stackdir, getcwd(NULL, 0));
+
+			return CSHELL_PUSHD;
+		}
+	}
+	else
+		return CSHELL_PUSHD_ERROR;
+}	
+
+
+int cshell_popd(char **args)
+{
+	if (args[1] == NULL)
+	{
+		char* dir;
+		_stack_pop(stackdir, &dir);
+		printf(dir);
+		chdir(dir);
+		return CSHELL_POPD;
+	}
+	else
+		return CSHELL_POPD_ERROR;
+}
 
 
 /* 	Parsers + performers 	*/
@@ -434,6 +488,7 @@ int main()
 	char **tokenizingline = NULL;
 	char **cmd_exec = (char**) malloc((long)CSHELL_MAX_PIPE_NUM * sizeof(char*));
 	
+	_stack_push(stackdir, getcwd(NULL,0));
 	int status;
 	
 	while (1)

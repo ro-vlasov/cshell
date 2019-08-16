@@ -6,4 +6,6 @@ Custom shell written in C
  - exit
  - cd
  - history
- - freehistory	
+ - freehistory
+ - dirs
+ - pushd	
