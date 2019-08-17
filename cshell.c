@@ -188,8 +188,16 @@ int cshell_pushd(char **args)
 		}
 		else
 		{
-			_stack_push(stackdir, getcwd(NULL, 0));
-
+			const char* pushdir = getcwd(NULL, 0);
+			if (!strcmp(pushdir, _stack_peek(stackdir)))
+			{
+				free(pushdir);
+			}
+			else
+			{
+				_stack_push(stackdir, pushdir);
+			}
+			cshell_dirs(NULL);	//print stack-list
 			return CSHELL_PUSHD;
 		}
 	}
@@ -203,9 +211,10 @@ int cshell_popd(char **args)
 	if (args[1] == NULL)
 	{
 		char* dir;
-		_stack_pop(stackdir, &dir);
-		printf(dir);
-		chdir(dir);
+		dir = _stack_pop(stackdir);
+		chdir(dir);			
+		
+		cshell_dirs(NULL);		//print stack-list
 		return CSHELL_POPD;
 	}
 	else

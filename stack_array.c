@@ -5,7 +5,7 @@
 
 int position = 0;
 
-void _stack_push(char** stack, char* element)
+void _stack_push(char** stack,const char* element)
 {
 	if (position < STACK_COUNT)
 	{
@@ -21,28 +21,35 @@ void _stack_push(char** stack, char* element)
 }
 
 
-void _stack_pop(char** stack, char** dir)
+char* _stack_pop(char** stack)
 {
 	if (position == 0)
 	{
 		printf("\nSTACK DIRECTORIES IS CLEAR\n");
+		return NULL;
 	}
 	if (position == 1)
 	{
-		strcpy(*dir, stack[0]);
-
+		return stack[0];
 	}
-	position--;
-
-	*dir = malloc(strlen(stack[position - 1]));
-	strcpy(*dir, stack[position - 1]);
+	if (position == 2)
+	{
+		position = 1;
+		free(stack[position]);	// because getcwd(NULL,0) uses malloc
+		return stack[0];
+	}
+	position -= 1;
+	free(stack[position]);		// because getcwd(NULL,0) uses malloc
+	return stack[position - 1];	
 }
 	
 
-
-
-void _stack_change_top(char** stack, char* element)
+void _stack_change_top(char** stack, const char* element)
 {
 	stack[position - 1] = element;
 }
 
+const char* _stack_peek(char** stack)
+{
+	return stack[position - 1];
+}

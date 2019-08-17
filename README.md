@@ -9,3 +9,4 @@ Custom shell written in C
  - freehistory
  - dirs
  - pushd	
+ - popd
